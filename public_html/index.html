@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Map</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				margin: 0px;
+				background-color: #000000;
+				overflow: hidden;
+			}
+		</style>
+	</head>
+	<body>
+		<script src="three.min.js"></script>
+                <script src="jquery-3.1.1.js"></script>
+                
+                <script src="Map.js"></script>
+                <script src="MapCreator.js"></script>
+                <script src="Entities.js"></script>
+                <script src="Gun.js"></script>
+                <script src="Camera.js"></script>
+                
+		<script>
+                    //three.js is using righthand coordinate system. Which means if I swap y and z for 2d, x axis will be inverted.
+                    // 50 to 99 are enemies, 100 to 149 are bullets. 220 to 229 door.
+                    $(document).ready(function(){
+			var camera, scene, renderer, clock;
+                        //very important
+                        var cameraX = 0;
+                        var cameraY = 1.5;
+                        var cameraZ = 0; 
+                        
+                        var map, mapMesh;//new ones
+                        
+                        var enemyEntities;
+                        var gun;
+                        var buildingEntities;
+                        var itemEntities;
+                        var player;
+
+			init();
+                        
+                        $(document).keydown(function(event){
+                            var keyCode = event.which;
+                            //console.log(keyCode);
+                            if(keyCode === 49){//1
+                                camera.switch();
+                                console.log(camera.isPerspective);
+                            } 
+                            if(keyCode === 87){//W
+                                if(!map.collision(player.x, player.z + 1)){
+                                    player.z++;
+                                }
+                            }
+                            if(keyCode === 83){//X
+                                if(!map.collision(player.x, player.z - 1)){
+                                    player.z--;
+                                }
+                            }                            
+                            if(keyCode === 68){//D
+                                if(!map.collision(player.x + 1, player.z)){
+                                    player.x++;
+                                }  
+                            }                            
+                            if(keyCode === 65){//A
+                                if(!map.collision(player.x - 1, player.z)){
+                                    player.x--;
+                                }  
+                            }
+                            if(keyCode === 69){//E
+                                player.interact();     
+                            } 
+                            if(keyCode === 32){//space shooting a bullet
+                                gun.shoot(player);
+                            }
+                        });                      
+                        animate();
+			function init() {
+                            scene = new THREE.Scene();
+                            clock = new THREE.Clock();
+                            loadInitMain(); 
+                            
+                            camera = new Camera(scene, renderer);
+                            camera.update(cameraX, cameraY, cameraZ);
+                            camera.switch();//ortho
+                            
+                            map = new Map(100, 100);
+                            map.initialize();
+                            createTerrain(map);
+                            initializeEntities(map);
+                            map.updateEntities(gun);
+                            map.updateEntities(buildingEntities);//how to handle door?
+                            
+                            mapInit(); 
+			}
+                        
+                        function loadInitMain(){
+                            renderer = new THREE.WebGLRenderer();
+                            renderer.setPixelRatio( window.devicePixelRatio );
+                            renderer.setSize( window.innerWidth, window.innerHeight);
+
+                            renderer.shadowMapEnabled = true;
+                            document.body.appendChild(renderer.domElement);
+                            window.addEventListener( 'resize', onWindowResize, false );
+
+                        }  
+
+                        function mapInit(){
+                            map.updateEntities(itemEntities);                      
+                            map.updateEntities(enemyEntities);
+                            mapMesh = new MapMesh(map, scene);
+                            mapMesh.initialize(cameraZ);
+                        }
+                        
+                        function mapUpdate(){
+                            map.initialize();
+                            createTerrain(map);
+                            map.updateEntities(enemyEntities);
+                            map.updateEntities(gun);
+                            map.updateEntities(buildingEntities);//how to handle door?
+                            map.updateEntities(itemEntities);
+                            map.update( player.x, player.z, player.id);
+                        }
+
+                        function createTerrain(map){
+                            addMansion(map);
+                            addSquareOnMap(map, 5, 30, 3, 9, 202);//right lawn
+                            addSquareOnMap(map, -30, -5, 3, 9, 202);//left lawn                           
+                            addSquareOnMap(map, -35, 35, -10, -5, 201);//front road
+                        }
+
+                        function initializeEntities(map){
+                            player = new Entity(0, 0, 1);
+                            
+                            buildingEntities = new Entities();
+                            
+                            enemyEntities = createRandomEntities(map, 5, 50);//enemyID starts from 50
+                            itemEntities = createRandomEntities(map, 5, 500);//itemID starts from 500
+                            
+                            gun = new Gun(map, enemyEntities, 40, 0.01);
+                            
+                            buildingEntities.addEntity(new Entity(0, 17, 220));//center room door
+                            buildingEntities.addEntity(new Entity(-17, 17, 221));//center left room door
+                            buildingEntities.addEntity(new Entity(17, 17, 222));//center right room door
+                            buildingEntities.addEntity(new Entity(0, 5, 223));//porch door
+                            buildingEntities.addEntity(new Entity(0, 11, 224));//corridor door
+                        }
+                         
+			function animate() {
+                            requestAnimationFrame(animate);
+                            var clockDelta = clock.getDelta();
+                            
+                            gun.tick(clockDelta);
+                            
+                            mapUpdate();
+                            mapMesh.update(cameraZ);
+                            camera.update(cameraX, cameraY, cameraZ);
+                            mapMesh.dispose();
+                        }
+                        
+			function onWindowResize() {
+                                camera.onWindowResize();
+			}
+
+                    });
+			
+		</script>
+	</body>
+</html>
